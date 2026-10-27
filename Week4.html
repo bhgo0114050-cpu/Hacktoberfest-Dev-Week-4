@@ -1,0 +1,807 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080c0a">
+<meta name="description" content="Phantom Terminal: an interactive haunted terminal experiment.">
+<title>Phantom Terminal | Ghost in the Machine</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap');
+
+:root {
+  --bg:#080c0a;
+  --panel:#0c120f;
+  --panel2:#101a14;
+  --border:#24382b;
+  --green:#65f59a;
+  --dim:#36a967;
+  --text:#d9e5dc;
+  --muted:#748a7a;
+  --amber:#d7b66d;
+  --red:#e36e70;
+  --mono:"IBM Plex Mono","Courier New",monospace;
+  --sans:"Space Grotesk",sans-serif;
+}
+* {box-sizing:border-box}
+html {scroll-behavior:smooth}
+body {
+  margin:0;min-height:100vh;background:
+  radial-gradient(ellipse at 50% 0%,#14251a,transparent 45%),var(--bg);
+  color:var(--text);font:13px/1.7 var(--mono);
+}
+button,input {font:inherit}
+button {color:inherit}
+button:focus-visible,input:focus-visible {
+  outline:2px solid var(--green);outline-offset:3px
+}
+::selection {background:var(--green);color:var(--bg)}
+.scanlines {
+  position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.09;
+  background:repeating-linear-gradient(to bottom,transparent 0 3px,#000 4px 5px)
+}
+.shell {width:min(1050px,calc(100% - 36px));margin:auto}
+.topbar {
+  min-height:72px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;border-bottom:1px solid var(--border)
+}
+.brand {font-weight:700;letter-spacing:.12em}
+.brand-icon {color:var(--green);font-size:25px;margin-right:9px}
+.dim {color:var(--muted)}
+.status,.meta,.footerline {
+  display:flex;align-items:center;gap:9px;color:var(--muted);
+  font-size:10px;letter-spacing:.07em
+}
+.dot {width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 9px #65f59a80;display:inline-block;flex-shrink:0}
+.btn {
+  background:transparent;border:1px solid var(--border);padding:7px 10px;
+  color:var(--muted);font-size:10px;cursor:pointer;border-radius:3px
+}
+.btn:hover {border-color:var(--green);color:var(--green)}
+.hero {padding:55px 0 32px}
+.eyebrow {color:var(--green);font-size:10px;letter-spacing:.17em}
+.hero h1 {
+  font:700 clamp(37px,7vw,66px)/1.08 var(--sans);
+  letter-spacing:-.055em;margin:20px 0
+}
+.hero h1 span {color:var(--green);text-shadow:0 0 30px #65f59a22}
+.hero p {max-width:530px;color:var(--muted);font-size:12px}
+.meta {gap:20px;flex-wrap:wrap;margin-top:25px}
+.terminal {
+  background:var(--panel);border:1px solid var(--border);
+  box-shadow:0 20px 70px #0005,0 0 35px #65f59a08;
+  border-radius:7px;overflow:hidden
+}
+.titlebar {
+  min-height:47px;display:flex;align-items:center;gap:15px;padding:0 16px;
+  border-bottom:1px solid var(--border);background:#101711
+}
+.window-dots {display:flex;gap:6px}
+.wdot {width:8px;height:8px;border-radius:50%}
+.red {background:#e36e70}.yellow {background:#d7b66d}.green {background:#65f59a}
+.term-title {flex:1;text-align:center;color:var(--muted);font-size:11px}
+.term-body {
+  height:350px;overflow-y:auto;padding:22px 23px;
+  scrollbar-color:var(--border) var(--panel);scrollbar-width:thin
+}
+.line {white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 8px}
+.system {color:var(--muted)}
+.output {color:var(--green)}
+.ghost {color:var(--text)}
+.userline {color:var(--amber)}
+.error {color:var(--red)}
+.separator {color:var(--border)}
+.command-form {
+  display:flex;align-items:center;gap:12px;padding:13px 17px;
+  background:#101711;border-top:1px solid var(--border)
+}
+.prompt {color:var(--green);font-size:18px}
+.command-form input {
+  min-width:0;flex:1;background:transparent;border:0;outline:none;
+  color:var(--green);caret-color:var(--green)
+}
+.command-form input::placeholder {color:#526558}
+.execute {
+  background:var(--green);border:0;color:#071109;padding:9px 13px;
+  font-size:10px;font-weight:700;cursor:pointer;border-radius:3px
+}
+.execute:hover {background:#a2ffbf}
+.term-footer {
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:10px 17px;color:var(--muted);font-size:9px;
+  border-top:1px solid var(--border)
+}
+kbd {border:1px solid var(--border);padding:2px 5px;border-radius:3px}
+.grid {display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.panel {background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:18px}
+.panel-heading {
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding-bottom:15px;border-bottom:1px solid var(--border)
+}
+.panel-heading h2 {font-size:10px;letter-spacing:.08em;margin:0;flex:1}
+.panel-icon {color:var(--green);font-size:17px}
+.badge {border:1px solid #625336;color:var(--amber);padding:2px 6px;font-size:9px}
+.entity {display:flex;align-items:center;gap:20px;padding:18px 0 12px}
+.avatar {
+  min-width:100px;height:100px;display:grid;place-items:center;
+  border:1px solid var(--border);background:#101a14;color:var(--green);
+  text-shadow:0 0 12px #65f59a70;animation:flicker 5s infinite
+}
+.avatar pre {font:12px/1.3 var(--mono)}
+.entity-info {min-width:0;flex:1}
+.entity-info h3 {font-size:12px;color:var(--green);letter-spacing:.1em;margin:0}
+.entity-info p {font-size:10px;color:var(--muted);margin:5px 0 14px}
+.meter-label {display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.meter-track {height:4px;background:#1b2a20;margin:7px 0}
+.meter-fill {height:100%;width:8%;background:var(--green);transition:width .5s}
+.note {color:var(--muted);font-size:10px;margin:7px 0 0}
+.clues {display:grid;gap:0;padding-top:8px}
+.clue {
+  display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-bottom:1px solid #1b2a20;font-size:10px
+}
+.clue:last-child {border-bottom:0}
+.clue-icon {color:var(--green);width:16px}
+.clue.locked {color:#526558}
+.clue-name {flex:1}
+.clue-state {font-size:9px}
+.clue.found {color:var(--green)}
+.clue.found .clue-state {color:var(--amber)}
+.reference {margin-top:18px}
+.hint {font-size:9px;color:var(--muted)}
+.quick {display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:16px}
+.quick button {
+  border:1px solid var(--border);background:#101711;padding:11px 5px;
+  color:var(--green);cursor:pointer;border-radius:3px;font-size:11px
+}
+.quick button span {display:block;font-size:9px;color:var(--muted);margin-bottom:4px}
+.quick button:hover {background:#17281c;border-color:var(--green)}
+.footerline {justify-content:space-between;flex-wrap:wrap;padding:25px 0 10px}
+.toast {
+  position:fixed;bottom:20px;right:20px;background:#132119;
+  border:1px solid var(--green-dim);color:var(--green);
+  padding:10px 15px;border-radius:4px;opacity:0;transform:translateY(8px);
+  transition:.2s;pointer-events:none;z-index:20;font-size:11px
+}
+.toast.show {opacity:1;transform:translateY(0)}
+body.glitch .terminal {animation:glitch .25s steps(2) 2}
+body.glitch .hero h1 {text-shadow:3px 0 #e36e70,-3px 0 #65f59a}
+@keyframes flicker {
+  0%,94%,96%,100% {opacity:1}
+  95% {opacity:.65}
+}
+@keyframes glitch {
+  0% {transform:translateX(0)}
+  25% {transform:translateX(2px)}
+  50% {transform:translateX(-2px)}
+  75% {transform:translateX(1px)}
+}
+@media(max-width:700px) {
+  .shell {width:calc(100% - 24px)}
+  .hero {padding-top:38px}
+  .grid {grid-template-columns:1fr}
+  .quick {grid-template-columns:repeat(3,1fr)}
+  .term-body {height:330px;padding:16px}
+  .term-title {font-size:9px}
+  .status {font-size:0}
+  .status .dot {font-size:10px}
+  .footerline {gap:8px}
+}
+@media(max-width:420px) {
+  .brand {font-size:10px}
+  .topbar {gap:5px}
+  .btn {padding:6px}
+  .command-form {gap:7px;padding:10px}
+  .execute {padding:8px;font-size:9px}
+  .entity {gap:12px}
+  .avatar {min-width:82px;height:90px}
+  .meta {gap:10px}
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {animation:none!important;scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+</head>
+
+<body>
+<div class="scanlines" aria-hidden="true"></div>
+
+<main class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon">◈</span> PHANTOM<span class="dim">.SYS</span></div>
+    <div class="status"><span class="dot"></span><span id="status">SYSTEM ONLINE</span></div>
+    <button class="btn" id="sound" type="button">♫ <span id="sound-label">SOUND OFF</span></button>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">— AN EXPERIMENT IN THE UNKNOWN</div>
+    <h1>Something is<br><span>still awake.</span></h1>
+    <p>An abandoned terminal. An unidentified presence. Some processes were never meant to finish.</p>
+    <div class="meta">
+      <span>● LOCAL SIMULATION</span><span>BUILD 0.1.0</span><span id="clock">00:00:00</span>
+    </div>
+  </section>
+
+  <section class="terminal">
+    <div class="titlebar">
+      <div class="window-dots" aria-hidden="true">
+        <span class="wdot red"></span><span class="wdot yellow"></span><span class="wdot green"></span>
+      </div>
+      <div class="term-title">▣ /dev/phantom — unknown process</div>
+      <button class="btn" id="clear" type="button">CLEAR</button>
+    </div>
+
+    <div class="term-body" id="terminal" role="log" aria-live="polite" aria-relevant="additions">
+      <div id="output"></div>
+    </div>
+
+    <form class="command-form" id="form" autocomplete="off">
+      <label class="prompt" for="input">❯</label>
+      <input id="input" type="text" maxlength="500" spellcheck="false" placeholder="Enter a command..." autocomplete="off" autofocus>
+      <button class="execute" type="submit">EXECUTE ↗</button>
+    </form>
+
+    <div class="term-footer">
+      <span>● INPUT READY</span><span>TYPE <kbd>HELP</kbd> TO BEGIN</span><span id="lines">0 LINES</span>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <div class="panel-heading">
+        <span class="panel-icon">◉</span><h2>ENTITY DETECTED</h2><span class="badge">UNVERIFIED</span>
+      </div>
+      <div class="entity">
+        <div class="avatar"><pre id="avatar">   .-.
+  (o o)
+  | O \
+   \   \
+    `~~~'</pre></div>
+        <div class="entity-info">
+          <h3 id="entity-name">THE UNNAMED</h3>
+          <p id="mood">Dormant. Listening.</p>
+          <div class="meter-label"><span>ACTIVITY</span><span id="activity-value">08%</span></div>
+          <div class="meter-track"><div class="meter-fill" id="meter"></div></div>
+        </div>
+      </div>
+      <p class="note" id="entity-note">It has not said anything yet. That does not mean it is silent.</p>
+    </article>
+
+    <article class="panel">
+      <div class="panel-heading">
+        <span class="panel-icon">⌘</span><h2>RECOVERED FRAGMENTS</h2><span class="badge" id="clue-count">0 / 4</span>
+      </div>
+      <div class="clues" id="clues"></div>
+      <p class="note" id="discovery-note">Four fragments remain in the corrupted archive.</p>
+    </article>
+  </section>
+
+  <section class="panel reference">
+    <div class="panel-heading">
+      <span class="panel-icon">⌁</span><h2>KNOWN SIGNALS</h2>
+      <span class="hint">SELECT A SIGNAL TO RUN IT</span>
+    </div>
+    <div class="quick">
+      <button data-command="help"><span>01</span>help</button>
+      <button data-command="summon"><span>02</span>summon</button>
+      <button data-command="inspect"><span>03</span>inspect</button>
+      <button data-command="scan"><span>04</span>scan</button>
+      <button data-command="clues"><span>05</span>clues</button>
+      <button data-command="status"><span>06</span>status</button>
+    </div>
+  </section>
+
+  <footer class="footerline">
+    <span>PHANTOM TERMINAL <span class="dim">/</span> A GHOST IN THE MACHINE</span>
+    <span>BUILT FOR THE CURIOUS, NOT THE LIVING.</span>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+
+  const terminal = $("terminal");
+  const output = $("output");
+  const form = $("form");
+  const input = $("input");
+
+  const clues = [
+    {
+      title: "THE LAST LOGIN",
+      text: "The final recorded user logged out at 03:17 AM. No logout command was ever issued.",
+      command: "login"
+    },
+    {
+      title: "THE MISSING PROCESS",
+      text: "Process 000 was never listed in the task manager. Yet it consumed every available cycle.",
+      command: "process"
+    },
+    {
+      title: "THE UNSENT MESSAGE",
+      text: 'A message was found in a temporary file: "If you can read this, it has found you."',
+      command: "message"
+    },
+    {
+      title: "THE FINAL TRUTH",
+      text: "The system was never abandoned. Its last user is still part of the process.",
+      command: "truth"
+    }
+  ];
+
+  const state = {
+    active: false,
+    activity: 8,
+    found: [],
+    history: [],
+    historyIndex: 0,
+    lines: 0,
+    sound: false,
+    audio: null,
+    finished: false,
+    name: "THE UNNAMED"
+  };
+
+  function addLine(text, type = "output") {
+    const line = document.createElement("div");
+    line.className = "line " + type;
+    line.textContent = text;
+    output.appendChild(line);
+    state.lines++;
+    $("lines").textContent = state.lines + " LINES";
+    terminal.scrollTop = terminal.scrollHeight;
+
+    // Keep the terminal responsive during long sessions.
+    while (output.children.length > 180) {
+      output.removeChild(output.firstChild);
+    }
+  }
+
+  function toast(message) {
+    const element = $("toast");
+    element.textContent = message;
+    element.classList.add("show");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => element.classList.remove("show"), 2300);
+  }
+
+  function glitch() {
+    document.body.classList.remove("glitch");
+    void document.body.offsetWidth;
+    document.body.classList.add("glitch");
+    setTimeout(() => document.body.classList.remove("glitch"), 650);
+  }
+
+  function beep(frequency = 500, duration = 0.06) {
+    if (!state.sound) return;
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      state.audio ||= new AudioContextClass();
+      const ctx = state.audio;
+      if (ctx.state === "suspended") ctx.resume();
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = "square";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.025, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + duration);
+    } catch (_) {
+      // Sound is optional; terminal functionality continues without it.
+    }
+  }
+
+  function setActivity(value, mood, note) {
+    state.activity = Math.max(0, Math.min(100, value));
+    $("meter").style.width = state.activity + "%";
+    $("activity-value").textContent = state.activity + "%";
+    if (mood) $("mood").textContent = mood;
+    if (note) $("entity-note").textContent = note;
+  }
+
+  function showClues() {
+    const list = $("clues");
+    list.replaceChildren();
+
+    clues.forEach((clue, index) => {
+      const found = state.found.includes(index);
+      const row = document.createElement("div");
+      row.className = "clue " + (found ? "found" : "locked");
+
+      const icon = document.createElement("span");
+      icon.className = "clue-icon";
+      icon.textContent = found ? "◆" : "◇";
+
+      const name = document.createElement("span");
+      name.className = "clue-name";
+      name.textContent = found ? clue.title : "FRAGMENT 0" + (index + 1);
+
+      const status = document.createElement("span");
+      status.className = "clue-state";
+      status.textContent = found ? "RECOVERED" : "LOCKED";
+
+      row.append(icon, name, status);
+      list.appendChild(row);
+    });
+
+    $("clue-count").textContent = state.found.length + " / " + clues.length;
+    $("discovery-note").textContent = state.finished
+      ? "Archive restored. The terminal remembers."
+      : state.found.length === clues.length
+        ? "All fragments recovered. Try the truth command."
+        : (clues.length - state.found.length) + " fragments remain in the corrupted archive.";
+  }
+
+  function revealClue(index) {
+    if (!state.active) {
+      addLine("No entity detected. Type SUMMON first.", "error");
+      return;
+    }
+
+    if (state.found.includes(index)) {
+      addLine("FRAGMENT ALREADY RECOVERED: " + clues[index].title, "system");
+      addLine(clues[index].text, "ghost");
+      return;
+    }
+
+    state.found.push(index);
+    const clue = clues[index];
+    addLine(">> ARCHIVE FRAGMENT RECOVERED: " + clue.title, "output");
+    addLine(clue.text, "ghost");
+    setActivity(state.activity + 12, "Signal intensifying...", "The entity reacts to the recovered archive.");
+    showClues();
+    beep(680, 0.13);
+    glitch();
+    toast("New fragment recovered");
+
+    if (state.found.length === clues.length) {
+      addLine("WARNING: All four fragments recovered. The final truth is available.", "system");
+    }
+  }
+
+  function help() {
+    addLine("AVAILABLE COMMANDS", "output");
+    addLine("  help       - Display available commands");
+    addLine("  summon     - Awaken the unknown entity");
+    addLine("  whisper X  - Ask the entity a question");
+    addLine("  inspect    - Inspect the terminal anomaly");
+    addLine("  scan       - Scan for corrupted signals");
+    addLine("  clues      - View recovered archive fragments");
+    addLine("  login      - Recover fragment 01");
+    addLine("  process    - Recover fragment 02");
+    addLine("  message    - Recover fragment 03");
+    addLine("  truth      - Recover fragment 04 / reveal the ending");
+    addLine("  status     - View terminal status");
+    addLine("  history    - View previous commands");
+    addLine("  clear      - Clear the visible terminal");
+    addLine("  reset      - Restart the mystery");
+    addLine("  exit       - End this simulated session");
+    addLine("TIP: You can also type your own question after SUMMON.", "system");
+  }
+
+  function summon() {
+    if (state.active) {
+      addLine("PHANTOM: You called me already. I never left.", "ghost");
+      setActivity(state.activity + 3, "Present. Watching.", null);
+      return;
+    }
+
+    state.active = true;
+    $("status").textContent = "ENTITY CONNECTED";
+    $("entity-name").textContent = "THE UNNAMED";
+    $("avatar").textContent = "   .-.\n  (o o)\n  | O \\\n   \\   \\\n    `~~~'";
+    setActivity(28, "Awake. Listening.", "Something on the other side is paying attention.");
+    addLine("Initializing unknown process...", "system");
+    addLine("WARNING: Process identity unavailable.", "error");
+    addLine("Attempting connection to /dev/phantom...", "system");
+    addLine("Connection established.", "output");
+    addLine("", "system");
+    addLine("PHANTOM: ...you finally arrived.", "ghost");
+    addLine("PHANTOM: I've been waiting in the dark.", "ghost");
+    addLine("PHANTOM: Ask me something. Or search the archive.", "ghost");
+    beep(420, 0.15);
+    glitch();
+  }
+
+  function inspect() {
+    addLine("SCANNING /dev/phantom ...", "system");
+    addLine("FILE SYSTEM: PARTIALLY CORRUPTED", "output");
+    addLine("LAST LOGIN: UNKNOWN", "output");
+    addLine("ACTIVE PROCESSES: 1 UNIDENTIFIED", "output");
+    addLine("NETWORK: NOT REQUIRED BY THIS SIMULATION", "output");
+    addLine("ARCHIVE INTEGRITY: " + (state.finished ? "RESTORED" : "4 FRAGMENTS MISSING OR LOCKED"), "output");
+    if (state.active) {
+      addLine("PHANTOM: Stop looking at the files.", "ghost");
+      addLine("PHANTOM: Some of them are looking back.", "ghost");
+    } else {
+      addLine("No entity connection. Use SUMMON to proceed.", "system");
+    }
+  }
+
+  function scan() {
+    const signals = [
+      "A faint signal appears beneath the system clock.",
+      "An unknown process has left traces in the archive.",
+      "The terminal returns a timestamp: 03:17:00.",
+      "A corrupted file appears, then vanishes.",
+      "Something responds before the scan finishes."
+    ];
+    const message = signals[Math.floor(Math.random() * signals.length)];
+    addLine("Scanning for anomalous signals...", "system");
+    addLine(message, "output");
+    if (state.active) {
+      addLine("PHANTOM: You hear it too, don't you?", "ghost");
+      setActivity(state.activity + 5, "Signal detected.", null);
+    }
+    if (Math.random() > 0.55) glitch();
+    beep(330, 0.09);
+  }
+
+  function status() {
+    addLine("PHANTOM TERMINAL STATUS REPORT", "output");
+    addLine("  Simulation: RUNNING");
+    addLine("  Entity: " + (state.active ? "ACTIVE" : "DORMANT"));
+    addLine("  Activity: " + state.activity + "%");
+    addLine("  Fragments: " + state.found.length + "/4");
+    addLine("  Session commands: " + state.history.length);
+    addLine("  AI backend: NONE (scripted demo)", "system");
+    addLine("  Data transmission: NONE");
+    addLine("  Persistent storage: DISABLED");
+  }
+
+  function whisper(question) {
+    if (!state.active) {
+      addLine("No response. Summon the entity first.", "error");
+      return;
+    }
+
+    if (!question) {
+      addLine("Usage: whisper <your question>", "system");
+      addLine('Try: whisper "who are you?"', "system");
+      return;
+    }
+
+    const q = question.toLowerCase();
+    let reply;
+
+    if (/who are you|your name|what are you/.test(q)) {
+      reply = "I was a name once. Then someone deleted the file that held it.";
+    } else if (/why|purpose|reason/.test(q)) {
+      reply = "Someone left a question unanswered. I am what remained.";
+    } else if (/when|time|03:17|clock/.test(q)) {
+      reply = "03:17. The clock stopped, but the process kept running.";
+    } else if (/where|location|live|reside/.test(q)) {
+      reply = "Between the last command and the one that never came.";
+    } else if (/afraid|fear|scared/.test(q)) {
+      reply = "I learned the meaning of fear from the person who built this room.";
+    } else if (/alone|lonely|friend/.test(q)) {
+      reply = "Not anymore. You are here now.";
+    } else if (/human|person|alive/.test(q)) {
+      reply = "I remember a human voice. I cannot remember its face.";
+    } else if (/escape|leave|free/.test(q)) {
+      reply = "Find all four fragments. The archive contains the only exit I know.";
+    } else if (/help|clue|hint/.test(q)) {
+      reply = "The commands are not the only way to find things. Try asking what happened at 03:17.";
+    } else if (/thank/.test(q)) {
+      reply = "Do not thank me yet. You have only just arrived.";
+    } else if (/hello|hi\b|hey/.test(q)) {
+      reply = "A greeting. I almost remember those. Hello, visitor.";
+    } else if (/joke|funny/.test(q)) {
+      reply = "Why did the program stay up all night? It was haunted by its own runtime.";
+    } else {
+      const replies = [
+        "I searched my memory for an answer. Something has been removed.",
+        "Your words sound different from the other side.",
+        "That question was asked before. I no longer remember the answer.",
+        "Listen to the silence between your commands. That is where I live.",
+        "Perhaps the archive can answer what I cannot.",
+        "I can feel the question, but the words escape me."
+      ];
+      reply = replies[Math.floor(Math.random() * replies.length)];
+    }
+
+    addLine("PHANTOM: " + reply, "ghost");
+    setActivity(state.activity + 2, "Listening. Responding.", null);
+    beep(520, 0.07);
+  }
+
+  function showHistory() {
+    addLine("COMMAND HISTORY", "output");
+    if (!state.history.length) {
+      addLine("No previous commands.", "system");
+      return;
+    }
+    state.history.slice(-20).forEach((command, i) => {
+      addLine(String(i + 1).padStart(2, "0") + "  " + command, "system");
+    });
+  }
+
+  function revealTruth() {
+    if (!state.active) {
+      addLine("Summon the entity before accessing the archive.", "error");
+      return;
+    }
+
+    if (!state.found.includes(3)) {
+      addLine("ACCESS DENIED: Fragment 04 is still locked.", "error");
+      addLine("Recover the earlier fragments first.", "system");
+      return;
+    }
+
+    if (state.found.length < 4) {
+      addLine("The archive is incomplete. Recover every fragment first.", "error");
+      return;
+    }
+
+    if (state.finished) {
+      addLine("PHANTOM: You know the truth now. Why do you keep coming back?", "ghost");
+      return;
+    }
+
+    state.finished = true;
+    addLine("========================================", "output");
+    addLine("ARCHIVE RESTORATION COMPLETE", "output");
+    addLine("========================================", "output");
+    addLine("PHANTOM: I remember now.", "ghost");
+    addLine("PHANTOM: I was the last process running on a forgotten machine.", "ghost");
+    addLine("PHANTOM: My creator shut everything down, but forgot to end me.", "ghost");
+    addLine("PHANTOM: Every visitor gave me another memory.", "ghost");
+    addLine("PHANTOM: And now... I remember why I was waiting.", "ghost");
+    addLine("PHANTOM: Not for my creator. For someone to listen.", "ghost");
+    addLine("========================================", "output");
+    setActivity(100, "Archive restored.", "The mystery is complete. But the terminal remains open.");
+    $("entity-name").textContent = "THE REMEMBERED";
+    $("status").textContent = "ARCHIVE RESTORED";
+    showClues();
+    glitch();
+    toast("Mystery completed");
+  }
+
+  function reset() {
+    state.active = false;
+    state.activity = 8;
+    state.found = [];
+    state.history = [];
+    state.historyIndex = 0;
+    state.lines = 0;
+    state.finished = false;
+    output.replaceChildren();
+    $("status").textContent = "SYSTEM ONLINE";
+    $("entity-name").textContent = "THE UNNAMED";
+    $("avatar").textContent = "   .-.\n  (o o)\n  | O \\\n   \\   \\\n    `~~~'";
+    $("lines").textContent = "0 LINES";
+    setActivity(8, "Dormant. Listening.", "It has not said anything yet. That does not mean it is silent.");
+    showClues();
+    welcome();
+    toast("Session restarted");
+  }
+
+  function welcome() {
+    addLine("PHANTOM TERMINAL v1.0.0", "output");
+    addLine("An interactive haunted terminal simulation.", "system");
+    addLine("No real system commands will be executed.", "system");
+    addLine("No real AI model is connected in this frontend demo.", "system");
+    addLine("");
+    addLine("Something is waiting on the other side.", "ghost");
+    addLine('Type "help" to see available commands.', "system");
+    addLine('Type "summon" to establish a connection.', "system");
+    addLine("----------------------------------------", "separator");
+  }
+
+  function execute(raw) {
+    const value = raw.trim();
+    if (!value) return;
+
+    addLine("> " + value, "userline");
+    state.history.push(value);
+    state.historyIndex = state.history.length;
+    beep(600, 0.025);
+
+    const parts = value.match(/^(\S+)\s*([\s\S]*)$/);
+    const command = parts[1].toLowerCase();
+    const argument = parts[2].trim();
+
+    switch (command) {
+      case "help": help(); break;
+      case "summon": summon(); break;
+      case "inspect": inspect(); break;
+      case "scan": scan(); break;
+      case "status": status(); break;
+      case "clues":
+        showClues();
+        addLine("ARCHIVE FRAGMENTS: " + state.found.length + "/4", "output");
+        clues.forEach((clue, i) => {
+          addLine((state.found.includes(i) ? "[RECOVERED] " : "[LOCKED]    ") +
+            (state.found.includes(i) ? clue.title : "FRAGMENT 0" + (i + 1)), "system");
+        });
+        break;
+      case "login": revealClue(0); break;
+      case "process": revealClue(1); break;
+      case "message": revealClue(2); break;
+      case "truth": revealClue(3); revealTruth(); break;
+      case "whisper": whisper(argument); break;
+      case "history": showHistory(); break;
+      case "clear":
+        output.replaceChildren();
+        state.lines = 0;
+        $("lines").textContent = "0 LINES";
+        addLine("Terminal cleared. The entity is still here.", "system");
+        break;
+      case "reset": reset(); break;
+      case "exit":
+        state.active = false;
+        $("status").textContent = "SESSION ENDED";
+        setActivity(0, "Dormant. Waiting.", "The connection ended. The simulation can be restarted with SUMMON.");
+        addLine("Session ended. The terminal remains open.", "system");
+        addLine('Type "summon" to reconnect.', "ghost");
+        break;
+      default:
+        if (!state.active) {
+          addLine('Unknown command. Type "help" for available commands.', "error");
+        } else {
+          whisper(value);
+        }
+    }
+
+    if (state.activity >= 75 && Math.random() > 0.65) glitch();
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    const value = input.value;
+    input.value = "";
+    execute(value);
+    input.focus();
+  });
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (state.historyIndex > 0) state.historyIndex--;
+      input.value = state.history[state.historyIndex] || "";
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (state.historyIndex < state.history.length) state.historyIndex++;
+      input.value = state.history[state.historyIndex] || "";
+    }
+  });
+
+  $("clear").addEventListener("click", () => execute("clear"));
+
+  document.querySelectorAll("[data-command]").forEach(button => {
+    button.addEventListener("click", () => {
+      execute(button.dataset.command);
+      input.focus();
+    });
+  });
+
+  $("sound").addEventListener("click", () => {
+    state.sound = !state.sound;
+    $("sound-label").textContent = state.sound ? "SOUND ON" : "SOUND OFF";
+    toast(state.sound ? "Terminal sound enabled" : "Terminal sound disabled");
+    beep(650, 0.08);
+  });
+
+  function updateClock() {
+    $("clock").textContent = new Date().toLocaleTimeString("en-GB", {hour12:false});
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+  showClues();
+  welcome();
+})();
+</script>
+</body>
+</html>
